@@ -1,6 +1,7 @@
 from datetime import datetime
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
+from homeassistant.helpers.entity import EntityCategory
 from .const import DOMAIN
 import logging
 
@@ -9,25 +10,32 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry, async_add_entities):
     source = entry.data["entity_id"]
     name = entry.data["name"]
-    async_add_entities([PolishedEnergySensor(hass, name, source, entry.entry_id)])
+    entity = FinalEnergySensor(hass, name, source, entry.entry_id)
+    async_add_entities([entity], update_before_add=True)
 
-class PolishedEnergySensor(SensorEntity):
+class FinalEnergySensor(SensorEntity):
     def __init__(self, hass, name, source_entity_id, config_entry_id):
         self._hass = hass
         self._attr_name = name
         self._source_entity_id = source_entity_id
         self._attr_unique_id = f"{self._source_entity_id}_daily_kwh"
         self._attr_native_unit_of_measurement = "kWh"
-        self._attr_unit_of_measurement = "kWh"  # legacy fallback
+        self._attr_unit_of_measurement = "kWh"
         self._attr_icon = "mdi:flash"
         self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_has_entity_name = True
+        self._attr_entity_category = None
         self._attr_config_entry_id = config_entry_id
+        self.entity_id = f"sensor.{self._attr_unique_id.lower()}"
+
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._source_entity_id)},
-            "name": f"{name} Source",
+            "name": f"{name} Power Source",
+            "manufacturer": "Energy Collector",
+            "model": "Daily Accumulator",
             "entry_type": "service",
+            "configuration_url": "https://github.com/terafin/homeassistant-energy-collector"
         }
 
         self._state = 0.0
@@ -46,9 +54,10 @@ class PolishedEnergySensor(SensorEntity):
                 self._hass, self._reset_daily, hour=0, minute=0, second=0
             )
         )
+        self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self):
-        _LOGGER.info(f"[{self.name}] Entity removed from Home Assistant")
+        _LOGGER.info(f"[{self.name}] Unloading sensor")
 
     async def _handle_event(self, event):
         try:
@@ -90,7 +99,7 @@ class PolishedEnergySensor(SensorEntity):
             _LOGGER.exception(f"[{self.name}] Exception in energy update: {e}")
 
     async def _reset_daily(self, now):
-        _LOGGER.info(f"[{self.name}] Daily reset: total usage = {round(self._state, 5)} kWh")
+        _LOGGER.info(f"[{self.name}] Reset: total daily usage = {round(self._state, 5)} kWh")
         self._state = 0.0
         self._last_reported = None
         self._last_update = None
