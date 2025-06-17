@@ -1,11 +1,20 @@
 from datetime import datetime
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
+from homeassistant.helpers import device_registry as dr
 from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     name = entry.data["name"]
     source = entry.data["source"]
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=name,
+        manufacturer="Energy Collector",
+        model="Daily Power Accumulator",
+    )
     entity = EnergyCollectorSensor(hass, name, source, entry.entry_id)
     async_add_entities([entity], update_before_add=True)
 
