@@ -9,35 +9,30 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry, async_add_entities):
     source = entry.data["entity_id"]
     name = entry.data["name"]
-    entity = FinalLinkedEnergySensor(hass, name, source, entry.entry_id)
+    entity = FinalWorkingSensor(hass, name, source)
+    entity._async_set_entry_id(entry.entry_id)
     async_add_entities([entity], update_before_add=True)
     entity.async_write_ha_state()
 
-class FinalLinkedEnergySensor(SensorEntity):
-    def __init__(self, hass, name, source_entity_id, config_entry_id):
+class FinalWorkingSensor(SensorEntity):
+    def __init__(self, hass, name, source_entity_id):
         self._hass = hass
         self._attr_name = name
         self._source_entity_id = source_entity_id
-        self._attr_unique_id = f"{self._source_entity_id}_daily_kwh"
+        self._attr_unique_id = f"{source_entity_id}_daily_kwh"
         self._attr_native_unit_of_measurement = "kWh"
         self._attr_unit_of_measurement = "kWh"
         self._attr_icon = "mdi:flash"
         self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_has_entity_name = True
-        self._attr_entity_category = None
-        self._attr_config_entry_id = config_entry_id
-        self._attr_entry_id = config_entry_id
         self.entity_id = f"sensor.{self._attr_unique_id.lower()}"
 
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._source_entity_id)},
-            "name": f"{name} Power Source",
+            "identifiers": {(DOMAIN, source_entity_id)},
+            "name": f"{name} Source",
             "manufacturer": "Energy Collector",
-            "model": "Daily Accumulator",
-            "via_device": (DOMAIN, self._source_entity_id),
-            "entry_type": "service",
-            "configuration_url": "https://github.com/terafin/homeassistant-energy-collector"
+            "model": "Daily Accumulator"
         }
 
         self._state = 0.0
@@ -56,7 +51,6 @@ class FinalLinkedEnergySensor(SensorEntity):
                 self._hass, self._reset_daily, hour=0, minute=0, second=0
             )
         )
-        self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self):
         _LOGGER.info(f"[{self.name}] Unloading sensor")
@@ -70,39 +64,30 @@ class FinalLinkedEnergySensor(SensorEntity):
 
             raw = new_state.state
             if raw in ("unknown", "unavailable"):
-                _LOGGER.info(f"[{self.name}] Ignored invalid state: {raw}")
                 return
 
             power = float(raw)
 
-            if self._last_update is not None and self._last_power is not None:
-                delta_sec = (now - self._last_update).total_seconds()
-                if 0 < delta_sec < 3600:
-                    delta_hr = delta_sec / 3600.0
-                    avg_power = (self._last_power + power) / 2.0
-                    added_energy = (avg_power * delta_hr) / 1000.0
-
-                    _LOGGER.info(f"[{self.name}] Δt={delta_hr:.5f} hr, Pavg={avg_power:.2f} W, ΔE={added_energy:.6f} kWh")
-
-                    if added_energy < 0:
-                        _LOGGER.error(f"[{self.name}] Invalid negative energy calc: {added_energy:.6f}")
-                    else:
-                        self._state += added_energy
+            if self._last_update and self._last_power is not None:
+                delta = (now - self._last_update).total_seconds()
+                if 0 < delta < 3600:
+                    avg_power = (self._last_power + power) / 2
+                    self._state += (avg_power * delta / 3600) / 1000
 
             self._last_update = now
             self._last_power = power
 
-            new_rounded = round(self._state, 5)
-            if self._last_reported is None or new_rounded > self._last_reported:
-                self._last_reported = new_rounded
+            rounded = round(self._state, 5)
+            if self._last_reported is None or rounded > self._last_reported:
+                self._last_reported = rounded
                 self.async_write_ha_state()
 
         except Exception as e:
-            _LOGGER.exception(f"[{self.name}] Exception in energy update: {e}")
+            _LOGGER.exception(f"[{self.name}] Update failed: {e}")
 
     async def _reset_daily(self, now):
-        _LOGGER.info(f"[{self.name}] Reset: total daily usage = {round(self._state, 5)} kWh")
-        self._state = 0.0
+        _LOGGER.info(f"[{self.name}] Daily reset: {round(self._state, 5)} kWh")
+        self._state = 0
         self._last_reported = None
         self._last_update = None
         self._last_power = None
