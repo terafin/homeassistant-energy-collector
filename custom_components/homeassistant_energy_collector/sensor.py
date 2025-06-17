@@ -9,9 +9,9 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry, async_add_entities):
     source = entry.data["entity_id"]
     name = entry.data["name"]
-    async_add_entities([AccurateEnergySensor(hass, name, source)])
+    async_add_entities([DebugEnergySensor(hass, name, source)])
 
-class AccurateEnergySensor(SensorEntity):
+class DebugEnergySensor(SensorEntity):
     def __init__(self, hass, name, source_entity_id):
         self._hass = hass
         self._attr_name = name
@@ -20,6 +20,7 @@ class AccurateEnergySensor(SensorEntity):
         self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._state = 0.0
+        self._last_reported = None
         self._last_update = None
         self._last_power = None
 
@@ -44,25 +45,40 @@ class AccurateEnergySensor(SensorEntity):
 
             raw = new_state.state
             if raw in ("unknown", "unavailable"):
+                _LOGGER.info(f"[{self.name}] Ignored invalid state: {raw}")
                 return
 
             power = float(raw)
+
             if self._last_update is not None and self._last_power is not None:
                 delta_sec = (now - self._last_update).total_seconds()
                 if 0 < delta_sec < 3600:
                     delta_hr = delta_sec / 3600.0
                     avg_power = (self._last_power + power) / 2.0
-                    self._state += (avg_power * delta_hr) / 1000.0  # W to kWh
+                    added_energy = (avg_power * delta_hr) / 1000.0
+
+                    _LOGGER.info(f"[{self.name}] Δt={delta_hr:.5f} hr, Pavg={avg_power:.2f} W, ΔE={added_energy:.6f} kWh")
+
+                    if added_energy < 0:
+                        _LOGGER.error(f"[{self.name}] Invalid negative energy calc: {added_energy:.6f}")
+                    else:
+                        self._state += added_energy
 
             self._last_update = now
             self._last_power = power
-            self.async_write_ha_state()
+
+            new_rounded = round(self._state, 5)
+            if self._last_reported is None or new_rounded > self._last_reported:
+                self._last_reported = new_rounded
+                self.async_write_ha_state()
 
         except Exception as e:
-            _LOGGER.error(f"[{self.name}] Trapezoidal update error: {e}")
+            _LOGGER.exception(f"[{self.name}] Exception in energy update: {e}")
 
     async def _reset_daily(self, now):
+        _LOGGER.info(f"[{self.name}] Daily reset triggered")
         self._state = 0.0
+        self._last_reported = None
         self._last_update = None
         self._last_power = None
         self.async_write_ha_state()
