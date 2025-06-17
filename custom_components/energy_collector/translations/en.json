@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Energy Collector Setup",
+        "description": "Configure a daily energy accumulation sensor.",
+        "data": {
+          "name": "Sensor name",
+          "source": "Power (W) sensor"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "energy_collector_daily_energy": {
+        "name": "Daily Energy",
+        "state": "kWh"
+      }
+    }
+  }
+}

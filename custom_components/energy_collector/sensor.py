@@ -1,27 +1,20 @@
 from datetime import datetime
-from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorDeviceClass,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
-import logging
-
-_LOGGER = logging.getLogger(__name__)
-DOMAIN = "homeassistant_energy_collector"
+from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     name = entry.data["name"]
-    source = entry.data["entity_id"]
-    entity = WorkingEnergySensor(hass, name, source)
-    entity._async_set_entry_id(entry.entry_id)
+    source = entry.data["source"]
+    entity = EnergyCollectorSensor(hass, name, source, entry.entry_id)
     async_add_entities([entity], update_before_add=True)
 
-class WorkingEnergySensor(SensorEntity):
-    def __init__(self, hass, name, source_entity_id):
+class EnergyCollectorSensor(SensorEntity):
+    def __init__(self, hass, name, source_entity_id, entry_id):
         self._hass = hass
         self._name = name
         self._source_entity_id = source_entity_id
+        self._entry_id = entry_id
         self._state = 0.0
         self._last_update = None
         self._last_power = None
@@ -35,10 +28,10 @@ class WorkingEnergySensor(SensorEntity):
     @property
     def device_info(self):
         return {
-            "identifiers": {(DOMAIN, self._source_entity_id)},
+            "identifiers": {(DOMAIN, self._entry_id)},
             "name": self._name,
             "manufacturer": "Energy Collector",
-            "model": "Daily Accumulator",
+            "model": "Daily Power Accumulator"
         }
 
     async def async_added_to_hass(self):
@@ -61,7 +54,6 @@ class WorkingEnergySensor(SensorEntity):
         try:
             power = float(new_state.state)
         except ValueError:
-            _LOGGER.warning(f"[{self._name}] Invalid state: {new_state.state}")
             return
 
         if self._last_update is not None and self._last_power is not None:
@@ -75,7 +67,6 @@ class WorkingEnergySensor(SensorEntity):
         self.async_write_ha_state()
 
     async def _reset_daily(self, now):
-        _LOGGER.info(f"[{self._name}] Daily reset: {round(self._state, 5)} kWh")
         self._state = 0.0
         self._last_update = None
         self._last_power = None
