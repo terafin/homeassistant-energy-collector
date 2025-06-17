@@ -1,5 +1,5 @@
 {
-  "name": "Daily Energy Tracker",
+  "name": "Energy Collector",
   "content_in_root": false,
   "domains": ["sensor"],
   "country": "US",
