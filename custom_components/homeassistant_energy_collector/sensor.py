@@ -10,7 +10,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     source = entry.data["entity_id"]
     name = entry.data["name"]
     entity = WorkingEnergySensor(hass, name, source)
-    entity._async_set_entry_id(entry.entry_id)  # <--- This binds the entity to the config entry!
+    entity._async_set_entry_id(entry.entry_id)
     async_add_entities([entity], update_before_add=True)
 
 class WorkingEnergySensor(SensorEntity):
@@ -40,6 +40,15 @@ class WorkingEnergySensor(SensorEntity):
             )
         )
         _LOGGER.debug(f"[{self._name}] Energy sensor added")
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {("homeassistant_energy_collector", self._source_entity_id)},
+            "name": self._name,
+            "manufacturer": "Energy Collector",
+            "model": "Daily Accumulator",
+        }
 
     async def _handle_power_change(self, event):
         now = datetime.now()
