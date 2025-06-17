@@ -1,6 +1,5 @@
 from datetime import datetime
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.event import async_track_state_change, async_track_time_change
 from .const import DOMAIN
 import logging
@@ -10,9 +9,9 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry, async_add_entities):
     source = entry.data["entity_id"]
     name = entry.data["name"]
-    async_add_entities([DailyEnergySensor(hass, name, source)])
+    async_add_entities([EnergyCollectorSensor(hass, name, source)])
 
-class DailyEnergySensor(SensorEntity):
+class EnergyCollectorSensor(SensorEntity):
     def __init__(self, hass, name, source_entity_id):
         self._hass = hass
         self._attr_name = name
@@ -39,11 +38,23 @@ class DailyEnergySensor(SensorEntity):
     async def _handle_source_update(self, entity_id, old_state, new_state):
         try:
             now = datetime.now()
-            power = float(new_state.state)
+            power_str = new_state.state
+            if power_str in ("unknown", "unavailable"):
+                return
+
+            power = max(float(power_str), 0.0)
+
             if self._last_update is not None:
                 delta_hours = (now - self._last_update).total_seconds() / 3600.0
-                avg_power = (self._last_power + power) / 2
-                self._state += (avg_power * delta_hours) / 1000.0
+
+                if 0 < delta_hours < 3600:
+                    avg_power = (self._last_power + power) / 2
+                    added_energy = (avg_power * delta_hours) / 1000.0
+                    if added_energy >= 0:
+                        self._state += added_energy
+                    else:
+                        _LOGGER.warning(f"[{self.name}] Negative energy calc skipped: {added_energy} kWh")
+
             self._last_update = now
             self._last_power = power
             self.async_write_ha_state()

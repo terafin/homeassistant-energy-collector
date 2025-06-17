@@ -1,0 +1,1 @@
+DOMAIN = "energy_collector"

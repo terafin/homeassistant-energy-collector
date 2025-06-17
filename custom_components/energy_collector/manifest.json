@@ -1,0 +1,10 @@
+{
+  "domain": "energy_collector",
+  "name": "Energy Collector",
+  "version": "1.0.0",
+  "documentation": "https://github.com/terafin/homeassistant-energy-collector",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@terafin"],
+  "config_flow": true
+}
