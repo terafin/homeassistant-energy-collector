@@ -1,6 +1,6 @@
 from datetime import datetime
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import ENERGY_KILO_WATT_HOUR
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.event import async_track_state_change, async_track_time_change
 from .const import DOMAIN
 import logging
@@ -17,9 +17,9 @@ class DailyEnergySensor(SensorEntity):
         self._hass = hass
         self._attr_name = name
         self._source_entity_id = source_entity_id
-        self._attr_native_unit_of_measurement = ENERGY_KILO_WATT_HOUR
-        self._attr_state_class = "total_increasing"
-        self._attr_device_class = "energy"
+        self._attr_native_unit_of_measurement = "kWh"
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_device_class = SensorDeviceClass.ENERGY
         self._state = 0.0
         self._last_update = None
         self._last_power = 0.0
