@@ -1,1 +1,0 @@
-DOMAIN = "energy_collector"

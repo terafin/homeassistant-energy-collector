@@ -1,7 +1,7 @@
 {
-  "domain": "energy_collector",
-  "name": "Energy Collector",
-  "version": "1.0.0",
+  "domain": "homeassistant_energy_collector",
+  "name": "Home Assistant Energy Collector",
+  "version": "1.0.1",
   "documentation": "https://github.com/terafin/homeassistant-energy-collector",
   "requirements": [],
   "dependencies": [],

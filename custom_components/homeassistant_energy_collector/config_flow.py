@@ -2,7 +2,6 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 from homeassistant.const import CONF_NAME, CONF_ENTITY_ID
-
 from .const import DOMAIN
 
 class EnergyCollectorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

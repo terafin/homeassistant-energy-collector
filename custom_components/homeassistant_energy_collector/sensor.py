@@ -1,6 +1,6 @@
 from datetime import datetime
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
-from homeassistant.helpers.event import async_track_state_change, async_track_time_change
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
 from .const import DOMAIN
 import logging
 
@@ -25,8 +25,8 @@ class EnergyCollectorSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         self.async_on_remove(
-            async_track_state_change(
-                self._hass, self._source_entity_id, self._handle_source_update
+            async_track_state_change_event(
+                self._hass, [self._source_entity_id], self._handle_source_event
             )
         )
         self.async_on_remove(
@@ -35,18 +35,17 @@ class EnergyCollectorSensor(SensorEntity):
             )
         )
 
-    async def _handle_source_update(self, entity_id, old_state, new_state):
+    async def _handle_source_event(self, event):
         try:
             now = datetime.now()
-            power_str = new_state.state
-            if power_str in ("unknown", "unavailable"):
+            power_str = event.data.get("new_state", {}).get("state")
+            if power_str in ("unknown", "unavailable", None):
                 return
 
             power = max(float(power_str), 0.0)
 
             if self._last_update is not None:
                 delta_hours = (now - self._last_update).total_seconds() / 3600.0
-
                 if 0 < delta_hours < 3600:
                     avg_power = (self._last_power + power) / 2
                     added_energy = (avg_power * delta_hours) / 1000.0
@@ -59,7 +58,7 @@ class EnergyCollectorSensor(SensorEntity):
             self._last_power = power
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.error(f"[{self.name}] Error updating: {e}")
+            _LOGGER.error(f"[{self.name}] Error processing update: {e}")
 
     async def _reset_daily(self, now):
         self._state = 0.0
