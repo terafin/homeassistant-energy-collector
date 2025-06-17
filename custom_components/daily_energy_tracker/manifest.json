@@ -1,0 +1,10 @@
+{
+  "domain": "daily_energy_tracker",
+  "name": "Daily Energy Tracker",
+  "version": "1.0.0",
+  "documentation": "https://github.com/example/daily_energy_tracker",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@you"],
+  "config_flow": true
+}
