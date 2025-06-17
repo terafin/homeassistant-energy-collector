@@ -1,4 +1,4 @@
-# Daily Energy Tracker
+# Energy Collector
 
 Custom Home Assistant integration that tracks **daily kWh** from any power sensor (in watts), resetting automatically at midnight.
 
@@ -11,7 +11,7 @@ Custom Home Assistant integration that tracks **daily kWh** from any power senso
 
 ## Installation
 
-1. Copy the `custom_components/daily_energy_tracker/` folder into your Home Assistant `config/custom_components/` directory
+1. Copy the `custom_components/energy_collector/` folder into your Home Assistant `config/custom_components/` directory
 2. Restart Home Assistant
 3. Go to **Settings → Devices & Services → Integrations → Add Integration**
 4. Search for “Daily Energy Tracker”
