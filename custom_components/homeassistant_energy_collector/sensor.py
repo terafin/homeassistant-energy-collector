@@ -1,7 +1,6 @@
 from datetime import datetime
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
-from homeassistant.helpers.entity import EntityCategory
 from .const import DOMAIN
 import logging
 
@@ -10,10 +9,11 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, entry, async_add_entities):
     source = entry.data["entity_id"]
     name = entry.data["name"]
-    entity = FinalEnergySensor(hass, name, source, entry.entry_id)
+    entity = FinalLinkedEnergySensor(hass, name, source, entry.entry_id)
     async_add_entities([entity], update_before_add=True)
+    entity.async_write_ha_state()
 
-class FinalEnergySensor(SensorEntity):
+class FinalLinkedEnergySensor(SensorEntity):
     def __init__(self, hass, name, source_entity_id, config_entry_id):
         self._hass = hass
         self._attr_name = name
@@ -27,6 +27,7 @@ class FinalEnergySensor(SensorEntity):
         self._attr_has_entity_name = True
         self._attr_entity_category = None
         self._attr_config_entry_id = config_entry_id
+        self._attr_entry_id = config_entry_id
         self.entity_id = f"sensor.{self._attr_unique_id.lower()}"
 
         self._attr_device_info = {
@@ -34,6 +35,7 @@ class FinalEnergySensor(SensorEntity):
             "name": f"{name} Power Source",
             "manufacturer": "Energy Collector",
             "model": "Daily Accumulator",
+            "via_device": (DOMAIN, self._source_entity_id),
             "entry_type": "service",
             "configuration_url": "https://github.com/terafin/homeassistant-energy-collector"
         }
